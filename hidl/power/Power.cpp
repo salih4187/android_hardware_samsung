@@ -99,16 +99,9 @@ out:
     return Void();
 }
 
-Return<void> Power::powerHint(PowerHint hint, int32_t data) {
+Return<void> Power::powerHint(PowerHint hint, int32_t __unused data) {
     if (!initialized) {
         initialize();
-    }
-
-    /* Bail out if low-power mode is active */
-    if (current_profile == PowerProfile::POWER_SAVE && hint != PowerHint::LOW_POWER &&
-        hint != static_cast<PowerHint>(LineagePowerHint::SET_PROFILE)) {
-        LOG(VERBOSE) << "PROFILE_POWER_SAVE active, ignoring hint " << static_cast<int32_t>(hint);
-        return Void();
     }
 
     switch (hint) {
@@ -117,16 +110,8 @@ Return<void> Power::powerHint(PowerHint hint, int32_t data) {
             sendBoostpulse();
             break;
         case PowerHint::LOW_POWER:
-            setProfile(data ? PowerProfile::POWER_SAVE : PowerProfile::BALANCED);
-            break;
         default:
-            if (hint == static_cast<PowerHint>(LineagePowerHint::SET_PROFILE)) {
-                setProfile(static_cast<PowerProfile>(data));
-            } else if (hint == static_cast<PowerHint>(LineagePowerHint::CPU_BOOST)) {
-                sendBoost(data);
-            } else {
-                LOG(INFO) << "Unknown power hint: " << static_cast<int32_t>(hint);
-            }
+            LOG(INFO) << "Unknown power hint: " << static_cast<int32_t>(hint);
             break;
     }
     return Void();
@@ -151,27 +136,8 @@ Return<void> Power::getPlatformLowPowerStats(getPlatformLowPowerStats_cb _hidl_c
     return Void();
 }
 
-Return<int32_t> Power::getFeature(LineageFeature feature) {
-    switch (feature) {
-        case LineageFeature::SUPPORTED_PROFILES:
-            return static_cast<int32_t>(PowerProfile::MAX);
-        default:
-            return -1;
-    }
-}
-
 void Power::initialize() {
     findInputNodes();
-
-    current_profile = PowerProfile::BALANCED;
-
-    for (const std::string& interactivePath : cpuInteractivePaths) {
-        hispeed_freqs.emplace_back(get<std::string>(interactivePath + "/hispeed_freq", ""));
-    }
-
-    for (const std::string& sysfsPath : cpuSysfsPaths) {
-        max_freqs.emplace_back(get<std::string>(sysfsPath + "/cpufreq/scaling_max_freq", ""));
-    }
 
     initialized = true;
 }
@@ -196,34 +162,6 @@ void Power::findInputNodes() {
                 }
             }
         }
-    }
-}
-
-void Power::setProfile(PowerProfile profile) {
-    if (current_profile == profile) {
-        return;
-    }
-
-    switch (profile) {
-        case PowerProfile::POWER_SAVE:
-            // Limit to hispeed freq
-            for (int i = 0; i < cpuSysfsPaths.size(); i++) {
-                if (hispeed_freqs.size() > i && !hispeed_freqs.at(i).empty()) {
-                    set(cpuSysfsPaths.at(i) + "/cpufreq/scaling_max_freq", hispeed_freqs.at(i));
-                }
-            }
-            break;
-        case PowerProfile::BALANCED:
-        case PowerProfile::HIGH_PERFORMANCE:
-            // Restore normal max freq
-            for (int i = 0; i < cpuSysfsPaths.size(); i++) {
-                if (max_freqs.size() > i && !max_freqs.at(i).empty()) {
-                    set(cpuSysfsPaths.at(i) + "/cpufreq/scaling_max_freq", max_freqs.at(i));
-                }
-            }
-            break;
-        default:
-            break;
     }
 }
 

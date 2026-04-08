@@ -15,7 +15,7 @@
  */
 
 #include <fstream>
-#include <unistd.h>
+
 #include "KeyDisabler.h"
 
 namespace vendor {
@@ -25,7 +25,8 @@ namespace V1_0 {
 namespace samsung {
 
 bool KeyDisabler::isSupported() {
-    return access(KEY_DISABLER_NODE, R_OK) == 0;
+    std::ofstream file(KEY_DISABLER_NODE);
+    return file.good();
 }
 
 // Methods from ::vendor::lineage::touch::V1_0::IKeyDisabler follow.

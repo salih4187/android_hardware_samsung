@@ -15,7 +15,7 @@
  */
 
 #include <fstream>
-#include <unistd.h>
+
 #include "TouchscreenGesture.h"
 
 namespace vendor {
@@ -37,7 +37,8 @@ const std::map<int32_t, TouchscreenGesture::GestureInfo> TouchscreenGesture::kGe
 };
 
 bool TouchscreenGesture::isSupported() {
-    return access(kGeasturePath, R_OK) == 0;
+    std::ifstream file(kGeasturePath);
+    return file.good();
 }
 
 // Methods from ::vendor::lineage::touch::V1_0::ITouchscreenGesture follow.
